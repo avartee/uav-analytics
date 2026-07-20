@@ -1,35 +1,36 @@
-STREAMING_CHUNK:Defining workflow name and triggers
-
 name: Daily Update Data
+
+STREAMING_CHUNK:Configuring triggers for daily run and manual execution
 
 on:
 schedule:
-- cron: '0 0 * * *'
+- cron: '0 6 * * *'
 workflow_dispatch:
 
 jobs:
 
-STREAMING_CHUNK:Configuring the job environment
+STREAMING_CHUNK:Defining the update job and permissions
 
 update-data:
 runs-on: ubuntu-latest
 permissions:
 contents: write
-steps:
-# STREAMING_CHUNK:Checking out the repository
-- uses: actions/checkout@v4
 
-  # STREAMING_CHUNK:Setting up Python environment
+steps:
+  # STREAMING_CHUNK:Checking out the code and setting up Python
+  - name: Checkout repository
+    uses: actions/checkout@v4
+
   - name: Set up Python
     uses: actions/setup-python@v5
     with:
       python-version: '3.10'
 
-  # STREAMING_CHUNK:Running the data processing script
+  # STREAMING_CHUNK:Executing the Python script to update data.json
   - name: Run update script
     run: python update_data.py
 
-  # STREAMING_CHUNK:Committing and pushing changes
+  # STREAMING_CHUNK:Committing and pushing the updated data to the repository
   - name: Commit and push changes
     run: |
       git config --global user.name 'github-actions[bot]'
