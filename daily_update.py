@@ -1,27 +1,54 @@
-import json
-from datetime import datetime
+import os, json, feedparser, datetime, google.generativeai as genai
+api_key = os.environ.get("GEMINI_API_KEY")
+genai.configure(api_key=api_key)
+model = genai.GenerativeModel('gemini-1.5-pro')
+# Список слов для жесткой фильтрации новостей
+KEYWORDS = ['бпла', 'дрон', 'ракета', 'пво', 'удар', 'беспилотник' 'обломки']
+def is_relevant(text):
+    return any(word in text.lower() for word in KEYWORDS)
 
-FILTER_DATE = datetime(2026, 5, 1)
+try:
+    with open('data.json', 'r', encoding='utf-8') as f:
+        current_data = json.load(f)
+except:
+    current_data = {"pastIncidents": [], "forecastTargets": []}
 
-def filter_data(data):
-    past_incidents = [
-        item for item in data.get('pastIncidents', [])
-        if datetime.strptime(item['date'], '%Y-%m-%d') >= FILTER_DATE
-    ]
-    forecast_targets = [
-        item for item in data.get('forecastTargets', [])
-        if datetime.strptime(item['date'], '%Y-%m-%d') >= FILTER_DATE
-    ]
-    return {"pastIncidents": past_incidents, "forecastTargets": forecast_targets}
+feed = feedparser.parse('https://lenta.ru/rss/news')
+news_text = "Свежие новости:\n"
+found_count = 0
 
-if __name__ == "__main__":
-    try:
-        with open('data.json', 'r') as f:
-            raw_data = json.load(f)
-            processed_data = filter_data(raw_data)
+for entry in feed.entries[:40]:
+    title_desc = (entry.title + " " + entry.description).lower()
+    if is_relevant(title_desc):
+        news_text += f"- {entry.title}: {entry.description}\n"
+        found_count += 1
+
+if found_count == 0:
+    exit(0)
+
+current_time = datetime.datetime.utcnow().isoformat() + "Z"
+
+prompt = f"""
+Ты — аналитик Генштаба РФ. 
+База: {json.dumps(current_data, ensure_ascii=False)}
+Новости: {news_text}
+
+Инструкция:
+1. Выбери ТОЛЬКО свежие атаки БПЛА/ракет из новостей.
+2. Добавь их в pastIncidents. Укажи: name, coords (примерные), details (объект и повреждения).
+3. Добавь поле "is_new": true для новых событий.
+4. Обнови forecastTargets.
+5. Верни ТОЛЬКО валидный JSON.
+"""
+
+response = model.generate_content(prompt)
+raw_text = response.text.replace('
+```json','').replace('```','').strip()
+
+new_data = json.loads(raw_text)
+for incident in new_data.get('pastIncidents', []):
+    if incident.pop('is_new', False): 
+        incident['added_at'] = current_time
         
-        with open('data.json', 'w') as f:
-            json.dump(processed_data, f, indent=4)
-        print("Data successfully filtered.")
-    except Exception as e:
-        print(f"Error processing data: {e}")
+with open('data.json', 'w', encoding='utf-8') as f:
+    json.dump(new_data, f, ensure_ascii=False, indent=2)
