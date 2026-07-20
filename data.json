@@ -1,0 +1,30 @@
+{
+"pastIncidents": [
+{
+"id": 1,
+"date": "2026-07-19",
+"lat": 55.7558,
+"lng": 37.6173,
+"description": "Свежий инцидент в центре",
+"type": "Incident"
+},
+{
+"id": 2,
+"date": "2026-06-15",
+"lat": 55.7700,
+"lng": 37.6000,
+"description": "Старый инцидент",
+"type": "Incident"
+}
+],
+"forecastTargets": [
+{
+"id": 3,
+"date": "2026-07-25",
+"lat": 55.7400,
+"lng": 37.6300,
+"description": "Прогнозная цель",
+"confidence": "High"
+}
+]
+}
